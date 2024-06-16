@@ -28,7 +28,7 @@ public class LRUCache {
     
     public void Put(int key, int value) {
         LinkedListNode<Node> returnedLinkedListNode;
-        
+
         if(keyNodeDictionary.TryGetValue(key, out returnedLinkedListNode)) 
         {
             Console.WriteLine($"Key already exists in pod with value {returnedLinkedListNode.Value.Value}. Updating value to {value}");
@@ -59,7 +59,7 @@ public class LRUCache {
 
     private void moveNodeToFront(LinkedListNode<Node> node)
     {
-        nodeList.Remove(node);
+        nodeList.Remove(node); // Can this be improved? Currently O(n)
         nodeList.AddFirst(node);
     }
 
