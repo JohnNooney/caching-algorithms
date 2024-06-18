@@ -2,35 +2,33 @@
 
 class Program
 {
-    private static readonly int NumThreads = 4;
+    private static readonly int TaskCount = 4;
     private static readonly int NumOperationsPerThread = 5;
-    private static readonly int cacheSize = 10;
+    private static readonly int cacheSize = 5;
 
     static void Main(string[] args)
     {
         var cache = new ThreadSafeLRUCache(cacheSize);
 
-        var threads = new Thread[NumThreads];
+        var tasks = new Task[TaskCount];
 
-        for (int currentThread = 0; currentThread < NumThreads; currentThread++)
+        for (int currentTask = 0; currentTask < TaskCount; currentTask++)
         {
-            Console.WriteLine($"\nStarting thread: {currentThread}\n");
-            threads[currentThread] = new Thread(() => RunOperations(cache, currentThread));
-            threads[currentThread].Start();
+            Console.WriteLine($"\nStarting task: {currentTask}\n");
+
+            tasks[currentTask] = Task.Run(
+                () => RunOperations(cache, currentTask));
         }
 
-        foreach (var thread in threads)
-        {
-            thread.Join();
-        }
+        Task.WaitAll(tasks);
 
         Console.WriteLine("\nAll operations completed!");
     }
 
-    private static void RunOperations(ThreadSafeLRUCache cache, int currentThreadNumber)
+    private static void RunOperations(ThreadSafeLRUCache cache, int currentTaskNumber)
     {
         Random random = new Random();
-        for (int currentThreadOperationCount = 0; currentThreadOperationCount < NumOperationsPerThread; currentThreadOperationCount++)
+        for (int currentTaskOperationCount = 0; currentTaskOperationCount < NumOperationsPerThread; currentTaskOperationCount++)
         {
             int key = random.Next(100);
             int value = random.Next(100);
@@ -38,12 +36,12 @@ class Program
             // Randomly choose between Get and Put
             if (random.NextDouble() < 0.5)
             {
-                Console.WriteLine($"\nThread Operation: {currentThreadOperationCount} for thread: {currentThreadNumber} is getting key: {key}");
+                Console.WriteLine($"\nTask Operation: {currentTaskOperationCount} for task: {currentTaskNumber} is getting key: {key}\n");
                 cache.Get(key);
             }
             else
             {
-                Console.WriteLine($"\nThread Operation: {currentThreadOperationCount} for thread: {currentThreadNumber} is putting key,value: {key},{value}");
+                Console.WriteLine($"\nTask Operation: {currentTaskOperationCount} for task: {currentTaskNumber} is putting key,value: {key},{value}\n");
                 cache.Put(key, value);
             }
         }
