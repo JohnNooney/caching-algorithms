@@ -16,43 +16,57 @@ public class ThreadSafeLRUCache {
     }
     
     public int Get(int key) {
-        LinkedListNode<Node> returnedLinkedListNode;
+        mutex.WaitOne();
+        try {
+            LinkedListNode<Node> returnedLinkedListNode;
+            if(!keyNodeConcurrentDictionary.TryGetValue(key, out returnedLinkedListNode))
+            {
+                Console.WriteLine($"Node not found for key: {key}");
+                return -1;
+            }
 
-        if(!keyNodeConcurrentDictionary.TryGetValue(key, out returnedLinkedListNode))
-        {
-            Console.WriteLine($"Node not found for key: {key}");
-            return -1;
-        }
 
-        moveNodeToFront(returnedLinkedListNode);
-
-        Console.WriteLine($"Node with value: {returnedLinkedListNode.Value.Value} found and pushed to front of list.");
+            moveNodeToFront(returnedLinkedListNode);
         
-        return returnedLinkedListNode.Value.Value;
+            Console.WriteLine($"Node with value: {returnedLinkedListNode.Value.Value} found and pushed to front of list.");
+            
+            return returnedLinkedListNode.Value.Value;
+        }
+        finally
+        {
+            mutex.ReleaseMutex();
+        }
     }
     
     public void Put(int key, int value) {
-        LinkedListNode<Node> returnedLinkedListNode;
+        mutex.WaitOne();
+        try {
+            LinkedListNode<Node> returnedLinkedListNode;
+            if(keyNodeConcurrentDictionary.TryGetValue(key, out returnedLinkedListNode)) 
+            {
+                Console.WriteLine($"Key already exists in pod with value {returnedLinkedListNode.Value.Value}. Updating value to {value}");
 
-        if(keyNodeConcurrentDictionary.TryGetValue(key, out returnedLinkedListNode)) 
-        {
-            Console.WriteLine($"Key already exists in pod with value {returnedLinkedListNode.Value.Value}. Updating value to {value}");
+                returnedLinkedListNode.Value.Value = value;
+                moveNodeToFront(returnedLinkedListNode);
 
-            returnedLinkedListNode.Value.Value = value;
-            moveNodeToFront(returnedLinkedListNode);
+                return;
+            }
+            
+            LinkedListNode<Node> nodeToAdd = createNewNode(key,value);
+            
+            addNodeToList(nodeToAdd); // this should be interlocked
+            addNodeToCache(nodeToAdd);
 
-            return;
+            Console.WriteLine($"Added new Node with key: {key} and value: {value}.");
+            Console.WriteLine($"Current cache count:{keyNodeConcurrentDictionary.Count}");
+            if(keyNodeConcurrentDictionary.Count > cacheCapacity)
+            {
+                evictLeastRecentlyUsed();
+            }
         }
-        
-        LinkedListNode<Node> nodeToAdd = createNewNode(key,value);
-        addNodeToCache(nodeToAdd);
-        addNodeToList(nodeToAdd);
-
-        Console.WriteLine($"Added new Node with key: {key} and value: {value}.");
-        Console.WriteLine($"Current cache count:{keyNodeConcurrentDictionary.Count}");
-        if(keyNodeConcurrentDictionary.Count > cacheCapacity)
+        finally
         {
-            evictLeastRecentlyUsed();
+            mutex.ReleaseMutex();
         }
     }
 
@@ -64,17 +78,8 @@ public class ThreadSafeLRUCache {
 
     private void moveNodeToFront(LinkedListNode<Node> node)
     {
-        mutex.WaitOne();
-        try
-        {
-            nodeList.Remove(node); // Can this be improved? Currently O(n)
-            nodeList.AddFirst(node);
-        }
-        finally
-        {
-            mutex.ReleaseMutex();
-        }
-        
+        nodeList.Remove(node); // Can this be improved? Currently O(n)
+        nodeList.AddFirst(node);  
     }
 
     private void addNodeToCache(LinkedListNode<Node> node)
@@ -84,36 +89,19 @@ public class ThreadSafeLRUCache {
 
     private void addNodeToList(LinkedListNode<Node> node)
     {
-        // Mutex lock this
-        mutex.WaitOne();
-        try
-        {
-            nodeList.AddFirst(node);
-        }
-        finally
-        {
-            mutex.ReleaseMutex();
-        }
+        nodeList.AddFirst(node);
     }
 
     private void evictLeastRecentlyUsed()
     {
         LinkedListNode<Node> leastRecentlyUsedNode;
 
-        mutex.WaitOne();
-        try 
-        {
-            leastRecentlyUsedNode = nodeList.Last;
-            nodeList.RemoveLast();
-        }
-        finally
-        {
-            mutex.ReleaseMutex();
-        }
+        leastRecentlyUsedNode = nodeList.Last;
+        nodeList.RemoveLast();
 
         KeyValuePair<int, LinkedListNode<Node>> dictionaryKeyValueToRemove = new KeyValuePair<int, LinkedListNode<Node>>(leastRecentlyUsedNode.Value.Key, leastRecentlyUsedNode);
-
         keyNodeConcurrentDictionary.TryRemove(dictionaryKeyValueToRemove);
+
         Console.WriteLine($"Cache full. Evicted Node with key:{leastRecentlyUsedNode.Value.Key} and value{leastRecentlyUsedNode.Value.Value}");
     }
 }
