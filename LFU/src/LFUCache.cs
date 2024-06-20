@@ -36,21 +36,12 @@ public class LFUCache
 
   public void Put(int key, int value)
   {
+    if(cacheMaxSize == 0)
+      return;
+
     LinkedListNode<CacheNode> newNode  = createLinkedListCacheNode(key, value);
 
-    if(cacheData.ContainsKey(key))
-    {
-      LinkedListNode<CacheNode> oldNode = cacheData[key];
-      newNode.Value.Frequency  = oldNode.Value.Frequency;
-      
-      updateCacheDictionaryWithNewNodeValue(newNode);
-      cacheFrequency.updateFrequencyDictionaryWithNewNodeValue(newNode, oldNode);
-    }
-    else
-    {
-      addToCacheDictionary(newNode);
-      cacheFrequency.addToFrequencyDictionary(newNode);
-    }
+    addOrUpdateNewNode(newNode);
 
     if(cacheData.Count > cacheMaxSize)
     {
@@ -63,20 +54,37 @@ public class LFUCache
     }
   }
 
+  private void addOrUpdateNewNode(LinkedListNode<CacheNode> newNode)
+  {
+    if(cacheData.ContainsKey(newNode.Value.Key))
+    {
+      LinkedListNode<CacheNode> oldNode = cacheData[newNode.Value.Key];
+      newNode.Value.Frequency  = oldNode.Value.Frequency;
+      
+      updateCacheDictionaryWithNewNodeValue(newNode);
+      cacheFrequency.updateFrequencyDictionaryWithNewNodeValue(newNode, oldNode);
+    }
+    else
+    {
+      addToCacheDictionary(newNode);
+      cacheFrequency.addToFrequencyDictionary(newNode);
+    }
+  }
+
   private void updateCacheDictionaryWithNewNodeValue(LinkedListNode<CacheNode> nodeToAdd)
   {
     cacheData[nodeToAdd.Value.Key] = nodeToAdd;
   }
+
+  private void addToCacheDictionary(LinkedListNode<CacheNode> nodeToAdd)
+  {
+    cacheData.TryAdd(nodeToAdd.Value.Key, nodeToAdd);
+    Console.WriteLine($"Added Node {nodeToAdd.Value.Key},{nodeToAdd.Value.Value} to Cache Data.");
+  }   
 
   private LinkedListNode<CacheNode> createLinkedListCacheNode(int key, int value, int frequency = 1)
   {
     CacheNode cacheNode = new CacheNode(key, value, frequency);
     return new LinkedListNode<CacheNode>(cacheNode);
   }
-  
-  private void addToCacheDictionary(LinkedListNode<CacheNode> nodeToAdd)
-  {
-    cacheData.TryAdd(nodeToAdd.Value.Key, nodeToAdd);
-    Console.WriteLine($"Added Node {nodeToAdd.Value.Key},{nodeToAdd.Value.Value} to Cache Data.");
-  }   
 }
