@@ -67,4 +67,22 @@ public class LFUCacheShould
         int returnedValue = lfuCache.Get(keyValuePairs[0].Key);
         Assert.That(returnedValue, Is.EqualTo(keyValuePairs[1].Value));
     }
+
+    [Test]
+    public void AddNothingIfCacheSizeIsZero()
+    {
+        lfuCache = new LFUCache(0);
+        KeyValuePair<int,int>[] keyValuePairs = new KeyValuePair<int,int>[2] {
+            new KeyValuePair<int,int>(6,7),
+            new KeyValuePair<int,int>(8,3)
+        };
+
+        foreach(KeyValuePair<int,int> keyValuePair in keyValuePairs)
+        {
+            lfuCache.Put(keyValuePair.Key, keyValuePair.Value);
+        }
+
+        int returnedValue = lfuCache.Get(keyValuePairs[1].Key);
+        Assert.That(returnedValue, Is.EqualTo(-1));
+    }
 }
