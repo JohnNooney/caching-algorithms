@@ -38,20 +38,21 @@ public class LFUCache
   {
     if(cacheMaxSize == 0)
       return;
+    if(cacheData.Count == cacheMaxSize && !cacheData.ContainsKey(key))
+      evictLFU();
 
     LinkedListNode<CacheNode> newNode  = createLinkedListCacheNode(key, value);
-
     addOrUpdateNewNode(newNode);
+  }
 
-    if(cacheData.Count > cacheMaxSize)
-    {
-      LinkedListNode<CacheNode> lfuNode = cacheFrequency.leastFrequentlyUsedNode();
+  private void evictLFU()
+  {
+    LinkedListNode<CacheNode> lfuNode = cacheFrequency.leastFrequentlyUsedNode();
       
-      cacheFrequency.removeFromFrequencyDictionary(lfuNode);
-      cacheData.Remove(lfuNode.Value.Key);
-      
-      Console.WriteLine($"Cache full. Evicted least frequently used node: {lfuNode.Value.Key},{lfuNode.Value.Value}.");
-    }
+    cacheFrequency.removeFromFrequencyDictionary(lfuNode);
+    cacheData.Remove(lfuNode.Value.Key);
+    
+    Console.WriteLine($"Cache full. Evicted least frequently used node: {lfuNode.Value.Key},{lfuNode.Value.Value}.");
   }
 
   private void addOrUpdateNewNode(LinkedListNode<CacheNode> newNode)
